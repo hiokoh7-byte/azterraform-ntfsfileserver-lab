@@ -8,7 +8,7 @@ Deploying a full Active Directory and file server environment from scratch using
 ![Status](https://img.shields.io/badge/Status-Complete-success)
 
 ## 🎥 Demo Video
-[Watch me build this lab end-to-end →](PASTE_YOUR_LINK_HERE)
+[Watch me deploy this lab, then deliberately break access to prove the permissions actually hold →](https://www.loom.com/share/4fc4f54fbb4f4140988614d56ea765a8)
 
 ## Overview
 
@@ -807,6 +807,28 @@ Write-Host "RDP into CLIENT01 as: LAB\sarah.jones Password: P@ssw0rd123!"
 
 > **Note:** the `$ResourceGroup` default above is `"RGFileServerLab"` exactly as documented in the original SOP, but every other file in this lab uses `RG-FileServerLab` (with a hyphen). If you don't pass `-ResourceGroup` explicitly in Step 8, this mismatch will cause the script to look in the wrong resource group. See the analysis note at the top of this repo's history, or just pass the correct name explicitly to be safe.
 
+## Deployment Screenshots
+
+**1. The actual Terraform code, `main.tf`**
+
+![FS01 and CLIENT01 VM resource blocks in main.tf](./screenshots/01-main-tf-code.png)
+> This is the real `main.tf` from this deployment, showing the FS01 and CLIENT01 VM resource blocks exactly as documented above: Windows Server 2022 Azure Edition for FS01, with the `depends_on` chain enforcing correct ordering after the NSG is attached.
+
+**2. `terraform apply` completing successfully**
+
+![terraform apply output showing 23 resources added and all outputs printed](./screenshots/02-terraform-apply-complete.png)
+> **Apply complete! Resources: 23 added, 0 changed, 0 destroyed.** That number lines up exactly with the resource count in this lab's design (resource group, VNet, subnet, NSG, 2 time_sleeps, 3 public IPs, 3 NICs, 3 NIC/NSG associations, 3 VMs, 1 VM extension, plus the Key Vault, its role assignment, secret, and random_id suffix). All five outputs, including `key_vault_name`, printed cleanly for use in the next step.
+
+**3. Every resource, visible in the Azure Portal**
+
+![Azure Portal resource list showing CLIENT01, DC01, FS01, and their associated NICs, public IPs, and disks](./screenshots/03-azure-portal-resources.png)
+> Visual confirmation that what Terraform declared is actually what's running in Azure, not just what the CLI claimed. 15 resources visible on this page alone (of the full 23), including each VM's disk, NIC, and public IP.
+
+**4. `configure-lab.ps1` finishing with full verification**
+
+![PowerShell terminal showing AD Verification PASSED and Share and NTFS Verification PASSED for all four departments](./screenshots/04-configure-lab-verification-passed.png)
+> The orchestration script's built-in verification confirms every AD user landed in the correct group (`sarah.jones → GRP_Finance`, `lisa.white → GRP_HR`, `tom.davis → GRP_Sales`, etc.), and every NTFS permission on every share matches the design exactly, Sales gets Modify for its own group and Full Control for IT, Finance grants Modify to Finance, Read-only to HR, and Full Control to IT, and so on. **LAB FULLY CONFIGURED (14.7 min)**, entirely unattended, with no manual portal checking required.
+
 ## Step 8 — Run the Lab Configuration
 
 ```powershell
@@ -825,8 +847,28 @@ RDP into CLIENT01 using the public IP from `terraform output`. All test user pas
 | LAB\sarah.jones | \\\\FS01\\HR | ❌ Access Denied | Not in GRP_HR, no ACE on HR share |
 | LAB\lisa.white | \\\\FS01\\Finance | ✅ Read only | GRP_HR has Read on Finance share |
 | LAB\lisa.white | \\\\FS01\\HR | ✅ Read and write | Member of GRP_HR, Modify NTFS |
+| LAB\lisa.white | \\\\FS01\\Sales | ❌ Access Denied | Not in GRP_Sales, no ACE on Sales share |
 | LAB\john.smith | \\\\FS01\\IT | ✅ Full Control | Member of GRP_IT, Full Control NTFS |
 | LAB\tom.davis | \\\\FS01\\Finance | ❌ Access Denied | GRP_Sales has no entry on Finance |
+
+### Screenshots — Lisa White's Access, Tested Across All Three Shares
+
+Lisa is HR, so her access should be: full control on her own department, read-only on Finance for cross-department reporting, and nothing at all on Sales, exactly the permission model this lab is built to prove. Rather than just trust the automated verification script, these three screenshots show that behavior tested manually, live, on CLIENT01.
+
+**HR share, full read/write access**
+
+![Lisa White browsing HRTESTDATA and SALARIES files inside \\FS01\HR](./screenshots/05-lisa-hr-full-access.png)
+> Logged in as `lisa.white`, browsing `\\FS01\HR` directly, both `HRTESTDATA` and `SALARIES` are visible and accessible. This is Modify-level NTFS access working exactly as configured, HR staff have full access to their own department's files.
+
+**Finance share, read-only, write blocked**
+
+![Windows Destination Folder Access Denied dialog when Lisa attempts to write to \\FS01\Finance](./screenshots/06-lisa-finance-read-only.png)
+> Attempting to copy a file into `\\FS01\Finance` as Lisa produces **"You need permission to perform this action."** This is the cross-department Read access working correctly, Lisa can see Finance data for reporting purposes, but the Modify right is reserved for Finance's own group. Read and write are genuinely two different permission levels here, not just a UI restriction.
+
+**Sales share, no access at all**
+
+![Windows network error stating Lisa cannot access \\FS01\Sales](./screenshots/07-lisa-sales-access-denied.png)
+> Attempting to even open `\\FS01\Sales` as Lisa fails outright: **"Windows cannot access \\FS01\Sales. You do not have permission... Contact your network administrator to request access."** No ACE exists for HR on the Sales share at all, so this isn't a read/write distinction, it's a complete lack of access, exactly matching the business requirement that Sales data has no reason to be visible to HR.
 
 ## Step 10 — Pause or Tear Down
 
