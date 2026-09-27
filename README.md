@@ -8,7 +8,7 @@ Deploying a full Active Directory and file server environment from scratch using
 ![Status](https://img.shields.io/badge/Status-Complete-success)
 
 ## 🎥 Demo Video
-[Watch me deploy this lab, then deliberately break access to prove the permissions actually hold →](https://www.loom.com/share/4fc4f54fbb4f4140988614d56ea765a8)
+[Watch me deploy this lab, then deliberately break access to prove the permissions actually hold →](https://www.loom.com/share/697c4711e60a459a9d1118d6c7b7f108)
 
 ## Overview
 
