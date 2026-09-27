@@ -58,25 +58,7 @@ Testing each user's access in Step 9 validates that the permission model actuall
 
 DC01 runs Active Directory, DNS, and Group Policy. FS01 hosts four SMB shares with NTFS permissions enforced per security group. CLIENT01 is the Windows 11 workstation where test users log in to exercise the full permission chain. All three VMs sit on the same subnet inside a single Azure VNet, protected by an NSG that only allows RDP from a specific IP.
 
-```
-Resource Group: RG-FileServerLab
-┌─────────────────────────────────────────────────────────┐
-│                                                           │
-│   DC01              FS01                CLIENT01         │
-│   Domain Controller  File Server         Domain Workstation │
-│   Active Directory:  \\FS01\Finance ◄─── sarah.jones      │
-│   lab.local           \\FS01\HR     ◄─── lisa.white       │
-│                        \\FS01\IT    ◄─── john.smith       │
-│   GRP_Finance          \\FS01\Sales ◄─── tom.davis        │
-│   GRP_HR                                                   │
-│   GRP_IT             NTFS permissions per group:          │
-│   GRP_Sales            Finance: GRP_Finance = Modify       │
-│                         IT share: GRP_IT = Full Control    │
-│                         HR → Finance: Read only             │
-└─────────────────────────────────────────────────────────┘
-
-Flow: User logs into CLIENT01 → authenticates via DC01 → accesses FS01 share → NTFS permissions enforced per group
-```
+![NTFS File Server Lab architecture diagram showing DC01 authenticating CLIENT01 users who access FS01 shares governed by NTFS permissions per department](./screenshots/ntfs-lab-architecture-diagram.png)
 
 ## Why Each Component Exists
 
